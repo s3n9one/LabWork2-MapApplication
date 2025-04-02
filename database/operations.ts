@@ -1,6 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import { ImageData, MarkerData } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 import * as Crypto from 'expo-crypto';
 
 async function generateUUID(): Promise<string> {
@@ -26,7 +25,6 @@ export const addMarker = async (db: SQLiteDatabase, latitude: number, longitude:
     }
 };
 
-
 // Получить все маркеры
 export const getMarkers = async (db: SQLiteDatabase): Promise<MarkerData[]> => {
     try {
@@ -43,7 +41,6 @@ export const getMarkers = async (db: SQLiteDatabase): Promise<MarkerData[]> => {
 // Удаляем маркер из таблицы
 export const deleteMarker = async (db: SQLiteDatabase, id: string): Promise<void> => {
     try {
-        // Благодаря ON DELETE CASCADE в схеме БД, изображения удалятся автоматически
         await db.runAsync(
             `DELETE FROM markers WHERE id = ?;`, 
             [id]

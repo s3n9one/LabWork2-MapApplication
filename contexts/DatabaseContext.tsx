@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SQLiteDatabase } from 'expo-sqlite';
 import { initDatabase } from '../database/schema';
 import * as operations from '../database/operations';
-import { MarkerData, ImageData, DatabaseContextType } from '../types';
+import { MarkerData, DatabaseContextType } from '../types';
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
@@ -24,10 +24,6 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     initializeDb();
-
-    return () => {
-      // При необходимости можно закрыть соединение с БД
-    };
   }, []);
 
   const contextValue: DatabaseContextType = {

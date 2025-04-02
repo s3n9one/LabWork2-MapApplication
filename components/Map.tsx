@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import MapView, { Marker as MapMarker } from 'react-native-maps';
-import { MarkerData, MapProps } from '../types';
+import { MapProps } from '../types';
 
 export default function Map({ markers, onLongPress, onMarkerPress }: MapProps) {
   return (

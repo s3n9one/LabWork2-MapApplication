@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, Button, Alert, FlatList, Image, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, Alert,  StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MarkerData, ImageData, DatabaseContextType } from '../../types';
+import { MarkerData, ImageData } from '../../types';
 import * as ImagePicker from 'expo-image-picker';
 import ImageList from '@/components/ImageList';
 import { useDatabase } from '../../contexts/DatabaseContext';
@@ -15,8 +15,6 @@ export default function MarkerDetails() {
     deleteImage,
     getMarkerById,
     deleteMarker,
-    isLoading,
-    error
   } = useDatabase();
 
   const [marker, setMarker] = useState<MarkerData | null>(null);
@@ -29,12 +27,10 @@ export default function MarkerDetails() {
       
       try {
         setLoading(true);
-        
-        // 1. Загружаем данные маркера
+
         const markerData = await getMarkerById(id);
         setMarker(markerData);
         
-        // 2. Загружаем изображения маркера
         const loadedImages = await getMarkerImages(id);
         setImages(loadedImages);
       } catch (error) {
@@ -59,8 +55,7 @@ export default function MarkerDetails() {
       if (!result.canceled && id) {
         const uri = result.assets[0].uri;
         await addImage(id, uri);
-        setImages(prev => [...prev, { id: '', uri }]); // Временное решение
-        // Перезагружаем изображения
+        setImages(prev => [...prev, { id: '', uri }]);
         const loadedImages = await getMarkerImages(id);
         setImages(loadedImages);
       }
@@ -92,10 +87,9 @@ export default function MarkerDetails() {
           onPress: async () => {
             try {
               await deleteMarker(id);
-              // Возвращаемся на карту с флагом обновления
               router.push({
                 pathname: '/',
-                params: { refresh: Date.now() } // Уникальное значение для триггера
+                params: { refresh: Date.now() }
               });
             } catch (error) {
               Alert.alert('Ошибка', 'Не удалось удалить маркер');

@@ -1,5 +1,3 @@
-// components/ImageList.tsx
-
 import React from 'react';
 import { View, FlatList, Image, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { ImageData } from '../types';

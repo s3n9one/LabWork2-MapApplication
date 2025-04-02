@@ -20,7 +20,6 @@ export default function Home() {
     }
   }, [getMarkers]);
 
-  // Обновляем при каждом открытии экрана
   useFocusEffect(
     useCallback(() => {
       loadMarkers();
@@ -28,7 +27,7 @@ export default function Home() {
   );
 
   useEffect(() => {
-    if (isLoading) return; // Не загружаем маркеры, пока БД не готова
+    if (isLoading) return;
 
     const loadMarkers = async () => {
       try {
@@ -44,7 +43,7 @@ export default function Home() {
     };
 
     loadMarkers();
-  }, [isLoading]); // Зависимость от isLoading
+  }, [isLoading]);
 
   const handleLongPress = async (event: LongPressEvent) => {
     if (isLoading) return;
