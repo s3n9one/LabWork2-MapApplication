@@ -4,64 +4,65 @@ import { initDatabase } from '../database/schema';
 import * as operations from '../database/operations';
 import { MarkerData, DatabaseContextType } from '../types';
 
+// Создаем контекст базы данных
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
 
 export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [db, setDb] = useState<SQLiteDatabase | null>(null);
-  const [error, setError] = useState<Error | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, setState] = useState({
+    db: null as SQLiteDatabase | null,
+    error: null as Error | null,
+    isLoading: true
+  });
 
+  // Инициализация базы данных
   useEffect(() => {
-    const initializeDb = async () => {
+    const setupDatabase = async () => {
       try {
         const database = await initDatabase();
-        setDb(database);
+        setState(prev => ({ ...prev, db: database, isLoading: false }));
       } catch (err) {
-        setError(err as Error);
-      } finally {
-        setIsLoading(false);
+        setState(prev => ({ ...prev, error: err as Error, isLoading: false }));
       }
     };
 
-    initializeDb();
+    setupDatabase();
   }, []);
 
-  const contextValue: DatabaseContextType = {
-    addMarker: async (latitude, longitude) => {
-      if (!db) throw new Error('Database not initialized');
-      return operations.addMarker(db, latitude, longitude);
-    },
-    deleteMarker: async (id: string) => {
-      if (!db) throw new Error('Database not initialized');
-      await operations.deleteMarker(db, id);
-    },
-    getMarkers: async () => {
-      if (!db) throw new Error('Database not initialized');
-      return operations.getMarkers(db);
-    },
-    addImage: async (markerId, uri) => {
-      if (!db) throw new Error('Database not initialized');
-      return operations.addImage(db, markerId, uri);
-    },
-    deleteImage: async (id) => {
-      if (!db) throw new Error('Database not initialized');
-      return operations.deleteImage(db, id);
-    },
-    getMarkerImages: async (markerId) => {
-      if (!db) throw new Error('Database not initialized');
-      return operations.getMarkerImages(db, markerId);
-    },
-    getMarkerById: async (id: string) => {
-      if (!db) throw new Error('Database not initialized');
-      const result = await db.getFirstAsync<MarkerData>(
-        'SELECT * FROM markers WHERE id = ?;', 
-        [id]
-      );
-      if (!result) throw new Error('Marker not found');
-      return result;
-    },
-    isLoading,
-    error,
+  // Проверка инициализации БД
+  const checkDatabase = () => {
+    if (!state.db) throw new Error('Database not initialized');
+    return state.db;
+  };
+
+  // Методы работы с базой данных
+  const databaseMethods = {
+    addMarker: (latitude: number, longitude: number) => 
+      operations.addMarker(checkDatabase(), latitude, longitude),
+    
+    deleteMarker: (id: string) => 
+      operations.deleteMarker(checkDatabase(), id),
+    
+    getMarkers: () => 
+      operations.getMarkers(checkDatabase()),
+    
+    addImage: (markerId: string, uri: string) => 
+      operations.addImage(checkDatabase(), markerId, uri),
+    
+    deleteImage: (id: string) => 
+      operations.deleteImage(checkDatabase(), id),
+    
+    getMarkerImages: (markerId: string) => 
+      operations.getMarkerImages(checkDatabase(), markerId),
+    
+    getMarkerById: (id: string) => 
+      operations.getMarkerById(checkDatabase(), id),
+  };
+
+  // Значение контекста
+  const contextValue = {
+    ...databaseMethods,
+    isLoading: state.isLoading,
+    error: state.error
   };
 
   return (
@@ -71,10 +72,11 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   );
 };
 
+// Хук для использования контекста
 export const useDatabase = () => {
   const context = useContext(DatabaseContext);
-  if (context === undefined) {
-    throw new Error('useDatabase must be used within a DatabaseProvider');
+  if (!context) {
+    throw new Error('useDatabase must be used within DatabaseProvider');
   }
   return context;
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, Alert,  StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Button, Alert, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MarkerData, ImageData } from '../../types';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +7,7 @@ import ImageList from '@/components/ImageList';
 import { useDatabase } from '../../contexts/DatabaseContext';
 
 export default function MarkerDetails() {
+  // Получение параметров и зависимостей
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { 
@@ -17,34 +18,37 @@ export default function MarkerDetails() {
     deleteMarker,
   } = useDatabase();
 
+  // Состояния компонента
   const [marker, setMarker] = useState<MarkerData | null>(null);
   const [images, setImages] = useState<ImageData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Загрузка данных маркера
   useEffect(() => {
-    const loadMarkerData = async () => {
+    const loadData = async () => {
       if (!id) return;
       
       try {
-        setLoading(true);
-
-        const markerData = await getMarkerById(id);
-        setMarker(markerData);
+        setIsLoading(true);
+        const [markerData, markerImages] = await Promise.all([
+          getMarkerById(id),
+          getMarkerImages(id)
+        ]);
         
-        const loadedImages = await getMarkerImages(id);
-        setImages(loadedImages);
+        setMarker(markerData);
+        setImages(markerImages);
       } catch (error) {
-        console.error('Error loading marker data:', error);
-        Alert.alert('Ошибка', 'Не удалось загрузить данные маркера');
+        showError('Ошибка загрузки', 'Не удалось загрузить данные маркера');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    loadMarkerData();
+    loadData();
   }, [id]);
 
-  const pickImage = async () => {
+  // Обработчики действий
+  const handleAddImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -53,27 +57,24 @@ export default function MarkerDetails() {
       });
       
       if (!result.canceled && id) {
-        const uri = result.assets[0].uri;
-        await addImage(id, uri);
-        setImages(prev => [...prev, { id: '', uri }]);
-        const loadedImages = await getMarkerImages(id);
-        setImages(loadedImages);
+        await addImage(id, result.assets[0].uri);
+        refreshImages();
       }
     } catch (error) {
-      Alert.alert('Ошибка выбора изображения', String(error));
+      showError('Ошибка выбора изображения', error);
     }
   };
 
   const handleDeleteImage = async (imageId: string) => {
     try {
       await deleteImage(imageId);
-      setImages(prev => prev.filter(img => img.id !== imageId));
+      setImages(images.filter(img => img.id !== imageId));
     } catch (error) {
-      Alert.alert('Ошибка удаления изображения', String(error));
+      showError('Ошибка удаления изображения', error);
     }
   };
 
-  const handleDeleteMarker = async () => {
+  const handleDeleteMarker = () => {
     if (!id) return;
     
     Alert.alert(
@@ -87,12 +88,9 @@ export default function MarkerDetails() {
           onPress: async () => {
             try {
               await deleteMarker(id);
-              router.push({
-                pathname: '/',
-                params: { refresh: Date.now() }
-              });
+              router.push({ pathname: '/', params: { refresh: Date.now() } });
             } catch (error) {
-              Alert.alert('Ошибка', 'Не удалось удалить маркер');
+              showError('Ошибка удаления', 'Не удалось удалить маркер');
             }
           }
         }
@@ -100,46 +98,61 @@ export default function MarkerDetails() {
     );
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text>Загрузка данных маркера...</Text>
-      </View>
-    );
+  // Вспомогательные функции
+  const refreshImages = async () => {
+    if (!id) return;
+    const updatedImages = await getMarkerImages(id);
+    setImages(updatedImages);
+  };
+
+  const showError = (title: string, error: unknown) => {
+    console.error(error);
+    Alert.alert(title, String(error));
+  };
+
+  // Состояния загрузки
+  if (isLoading) {
+    return <LoadingView />;
   }
 
   if (!marker) {
-    return (
-      <View style={styles.center}>
-        <Text>Маркер не найден</Text>
-        <Button title="Назад" onPress={() => router.back()} />
-      </View>
-    );
+    return <NotFoundView onBack={() => router.back()} />;
   }
 
+  // Основная верстка
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Детали маркера</Text>
-      <Text>Широта: {marker?.latitude.toFixed(4)}</Text>
-      <Text>Долгота: {marker?.longitude.toFixed(4)}</Text>
+      <Text>Широта: {marker.latitude.toFixed(4)}</Text>
+      <Text>Долгота: {marker.longitude.toFixed(4)}</Text>
 
       <View style={styles.buttonRow}>
-        <Button title="Добавить изображение" onPress={pickImage} />
-        <Button 
-          title="Удалить маркер" 
-          onPress={handleDeleteMarker} 
-          color="red" 
-        />
+        <Button title="Добавить изображение" onPress={handleAddImage} />
+        <Button title="Удалить маркер" onPress={handleDeleteMarker} color="red" />
       </View>
 
       <ImageList images={images} onDelete={handleDeleteImage} />
-
       <Button title="Назад на карту" onPress={() => router.back()} />
     </View>
   );
 }
 
+// Компоненты состояний
+const LoadingView = () => (
+  <View style={styles.center}>
+    <ActivityIndicator size="large" />
+    <Text>Загрузка данных маркера...</Text>
+  </View>
+);
+
+const NotFoundView = ({ onBack }: { onBack: () => void }) => (
+  <View style={styles.center}>
+    <Text>Маркер не найден</Text>
+    <Button title="Назад" onPress={onBack} />
+  </View>
+);
+
+// Стили
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },

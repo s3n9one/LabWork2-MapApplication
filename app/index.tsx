@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback  } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import Map from '../components/Map';
 import { MarkerData } from '../types';
 import { LongPressEvent } from 'react-native-maps';
-import { useRouter, useFocusEffect  } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useDatabase } from '../contexts/DatabaseContext';
 
 export default function Home() {
@@ -11,85 +11,58 @@ export default function Home() {
   const router = useRouter();
   const { addMarker, getMarkers, isLoading, error } = useDatabase();
 
+  // Загрузка маркеров
   const loadMarkers = useCallback(async () => {
     try {
       const loadedMarkers = await getMarkers();
-      setMarkers(loadedMarkers.map(m => ({ ...m, images: [] })));
-    } catch (error) {
-      console.error('Error loading markers:', error);
+      setMarkers(loadedMarkers.map(marker => ({ ...marker, images: [] })));
+    } catch (err) {
+      console.error('Ошибка загрузки маркеров:', err);
     }
   }, [getMarkers]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadMarkers();
-    }, [loadMarkers])
-  );
+  // Обновляем маркеры при фокусе и изменении состояния загрузки
+  useFocusEffect(useCallback(() => {
+    if (!isLoading) loadMarkers();
+  }, [isLoading, loadMarkers]));
 
-  useEffect(() => {
-    if (isLoading) return;
-
-    const loadMarkers = async () => {
-      try {
-        const loadedMarkers = await getMarkers();
-        const markersWithImages = loadedMarkers.map(marker => ({
-          ...marker,
-          images: []
-        }));
-        setMarkers(markersWithImages);
-      } catch (error) {
-        console.error('Error loading markers:', error);
-      }
-    };
-
-    loadMarkers();
-  }, [isLoading]);
-
+  // Обработка длинного нажатия на карту
   const handleLongPress = async (event: LongPressEvent) => {
     if (isLoading) return;
     
     const { latitude, longitude } = event.nativeEvent.coordinate;
     try {
       const markerId = await addMarker(latitude, longitude);
-      setMarkers(prev => [...prev, {
-        id: markerId,
-        latitude,
-        longitude,
-        images: []
-      }]);
-    } catch (error) {
-      console.error('Error adding marker:', error);
+      setMarkers(prev => [...prev, { id: markerId, latitude, longitude, images: [] }]);
+    } catch (err) {
+      console.error('Ошибка добавления маркера:', err);
     }
   };
 
+  // Переход к деталям маркера
   const handleMarkerPress = (markerId: string) => {
-    router.push({
-      pathname: '/marker/[id]',
-      params: { id: markerId },
-    });
+    router.push({ pathname: '/marker/[id]', params: { id: markerId } });
   };
 
-  if (isLoading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-        <Text>Инициализация базы данных...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: 'red' }}>Ошибка инициализации базы данных</Text>
-        <Text>{error.message}</Text>
-      </View>
-    );
-  }
-
+  // Основной интерфейс
   return (
     <View style={{ flex: 1 }}>
-      <Map markers={markers} onLongPress={handleLongPress} onMarkerPress={handleMarkerPress} />
+      <Map 
+        markers={markers} 
+        onLongPress={handleLongPress} 
+        onMarkerPress={handleMarkerPress} 
+      />
     </View>
   );
 }
+
+const styles = {
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  error: { 
+    color: 'red' 
+  }
+};
