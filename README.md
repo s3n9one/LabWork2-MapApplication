@@ -53,15 +53,23 @@ expo start
 Приложение использует SQLite для хранения данных. Схема состоит из двух таблиц:
 
 Таблица markers:
+
 id	TEXT (PK)	Уникальный идентификатор
+
 latitude	REAL	Широта местоположения
+
 longitude	REAL	Долгота местоположения
+
 created_at	DATETIME	Дата создания (автоматически)
 
 Таблица marker_images:
+
 id	TEXT (PK)	Уникальный идентификатор
+
 marker_id	TEXT (FK)	Ссылка на маркер
+
 uri	TEXT	Путь к изображению
+
 created_at	DATETIME	Дата создания (автоматически)
 
 Связи:
